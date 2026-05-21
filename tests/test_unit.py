@@ -98,6 +98,73 @@ def test_string_coerce_skips_unset():
     assert "timing" not in p
 
 
+# ---------- list_videos summarization ----------
+
+SAMPLE_RAW_VIDEO = {
+    "id": "abc-123",
+    "title": "Why is the sky blue?",
+    "prompt": "Why is the sky blue?",
+    "status": "completed",
+    "video_url": "https://golpo-podcast-inputs.s3.amazonaws.com/files/x.mp4?X-Amz-Signature=...",
+    "video_filename": "https://golpo-podcast-inputs.s3.us-east-2.amazonaws.com/files/x.mp4",
+    "thumbnail_url": "https://golpo-podcast-inputs.s3.us-east-2.amazonaws.com/files/y.png",
+    "video_duration": "0.5",
+    "video_type": "long",
+    "scenes": 6,
+    "is_public": False,
+    "ispodcast": False,
+    "created_at": "2026-05-21T04:05:04+00:00",
+    "updated_at": "2026-05-21T04:09:50+00:00",
+    # noise that should be dropped — sized realistically (~25 KB of transcript
+    # is typical for a 1-min video; this mirrors what the real Golpo API returns)
+    "transcript": "{\"sentences\": [" + ", ".join(
+        ['{"text": "sentence ' + str(i) + ' of many words here.", "start": ' + str(i) + ', "end": ' + str(i+1) + '}'
+         for i in range(100)]
+    ) + "]}",
+    "request_payload": {f"field_{i}": f"value_{i}" for i in range(40)},
+    "frame_image_urls": [f"https://golpo.example/files/frame-{i}.png" for i in range(20)],
+    "user_id": "user-123",
+    "attempt_count": 1,
+    "pipeline": "color",
+    "script_text": "Plants are nature's solar panels. " * 50,
+}
+
+
+def test_summarize_keeps_urls_and_drops_noise():
+    summary = client.summarize_video_entry(SAMPLE_RAW_VIDEO)
+    # URLs surface
+    assert summary["video_url"].startswith("https://")
+    assert summary["video_filename"].startswith("https://")
+    assert summary["thumbnail_url"].startswith("https://")
+    # ID and metadata kept
+    assert summary["id"] == "abc-123"
+    assert summary["title"] == "Why is the sky blue?"
+    assert summary["status"] == "completed"
+    assert summary["video_duration"] == "0.5"
+    # Noise dropped
+    assert "transcript" not in summary
+    assert "request_payload" not in summary
+    assert "frame_image_urls" not in summary
+    assert "script_text" not in summary
+    assert "user_id" not in summary
+
+
+def test_summarize_is_small():
+    """A summarized entry should be << the raw entry size."""
+    import json as _json
+    raw_size = len(_json.dumps(SAMPLE_RAW_VIDEO))
+    summary_size = len(_json.dumps(client.summarize_video_entry(SAMPLE_RAW_VIDEO)))
+    assert summary_size < raw_size / 2, \
+        f"summary not noticeably smaller: raw={raw_size} summary={summary_size}"
+
+
+def test_summarize_missing_fields_dont_appear_as_none():
+    """If the API omits a field, the summary should omit it too (not key=None)."""
+    minimal = {"id": "x", "status": "completed", "video_url": "https://..."}
+    s = client.summarize_video_entry(minimal)
+    assert s == {"id": "x", "status": "completed", "video_url": "https://..."}
+
+
 # ---------- MCP tool registration ----------
 
 def test_server_tools_registered():

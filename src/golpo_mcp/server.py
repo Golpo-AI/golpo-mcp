@@ -209,14 +209,41 @@ def upload_file(path: str) -> dict:
 
 
 @mcp.tool()
-def list_videos(limit: int = 20, offset: int = 0) -> dict:
-    """List the caller's recent videos.
+def list_videos(
+    limit: int = 20,
+    offset: int = 0,
+    include_full: bool = False,
+) -> dict:
+    """List the caller's recent videos. Returns a curated summary by default.
 
-    Returns: {videos: [...], total} or {error, ...}. Each video entry
-    includes id, title, status, created_at, and (when ready) video_url.
+    Each returned video includes: id, title, prompt, status, video_url
+    (presigned, ~7-day signed URL — ready to download right now),
+    video_filename (bare S3 URL — safe to share long-term), thumbnail_url,
+    video_duration, video_type, scenes, is_public, ispodcast, created_at,
+    updated_at.
+
+    Pass `include_full=True` to receive the raw API response with every
+    field per video (transcript, request_payload, per-frame image URLs,
+    etc.) — useful for debugging but very verbose (~25 KB per video).
+
+    Args:
+        limit: max videos to return (default 20)
+        offset: skip this many videos (for pagination)
+        include_full: return raw API payload instead of the curated summary
+
+    Returns: {videos: [...], total, limit, offset} or {error, ...}.
     """
     try:
-        return client.list_videos(limit=limit, offset=offset)
+        raw = client.list_videos(limit=limit, offset=offset)
+        if include_full or not isinstance(raw, dict):
+            return raw
+        videos = raw.get("videos", []) or []
+        return {
+            "videos": [client.summarize_video_entry(v) for v in videos],
+            "total": raw.get("total"),
+            "limit": raw.get("limit", limit),
+            "offset": raw.get("offset", offset),
+        }
     except Exception as e:
         return _error(e)
 

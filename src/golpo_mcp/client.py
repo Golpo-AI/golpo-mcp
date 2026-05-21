@@ -212,3 +212,29 @@ def list_videos(limit: int | None = None, offset: int | None = None) -> dict:
         qs.append(f"offset={offset}")
     suffix = ("?" + "&".join(qs)) if qs else ""
     return request("GET", f"/videos{suffix}")
+
+
+# Curated fields kept by `list_videos` summarization. Each entry shrinks from
+# ~30 keys / ~25 KB down to ~13 keys / ~1 KB, surfaces URLs prominently, and
+# drops the noisy fields (transcript, request_payload, frame_image_urls, ...).
+LIST_SUMMARY_FIELDS = (
+    "id",
+    "title",
+    "prompt",
+    "status",
+    "video_url",        # presigned, expires in ~7 days; download-ready now
+    "video_filename",   # bare, persistent URL; safe to share long-term
+    "thumbnail_url",
+    "video_duration",
+    "video_type",
+    "scenes",
+    "is_public",
+    "ispodcast",
+    "created_at",
+    "updated_at",
+)
+
+
+def summarize_video_entry(v: dict) -> dict:
+    """Project a raw /videos list entry down to the fields that matter."""
+    return {k: v.get(k) for k in LIST_SUMMARY_FIELDS if k in v}
