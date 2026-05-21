@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+*.egg
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Office/Excel lock files
+~$*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Claude Code local settings (per-machine, do not commit)
+.claude/settings.local.json
+
+# Defensive: never accidentally commit a Golpo API key file
+.golpo/
+api_key
+
+# Local working files
+.local/
