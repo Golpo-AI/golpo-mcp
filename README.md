@@ -10,6 +10,11 @@
 > MCP-compatible client — Claude Desktop, Claude Code, Cursor, Continue,
 > Zed, Windsurf, or your own.
 
+> 👋 **End-user, not a developer?** Read the friendly walk-through:
+> [**Use Golpo from your favorite AI tool**](docs/golpo-in-your-ai-tools.md) —
+> step-by-step setup for Cursor, Claude Code, VS Code, Claude Desktop, and
+> Visual Studio with troubleshooting and sample prompts.
+
 ## What it does
 
 Wraps the Golpo Video API as a set of MCP tools so an LLM (or any MCP
