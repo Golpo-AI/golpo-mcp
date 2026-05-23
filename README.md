@@ -80,7 +80,9 @@ menu.
 ### Claude Code
 
 ```bash
-claude mcp add golpo --env GOLPO_API_KEY=your-key -- uvx golpo-mcp
+claude mcp add --transport stdio --scope user \
+  --env GOLPO_API_KEY=your-key-here \
+  golpo -- uvx golpo-mcp
 ```
 
 Or by editing `~/.claude.json` directly:

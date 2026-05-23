@@ -4,20 +4,33 @@
 
 If you already use Cursor, Claude, VS Code, or any modern AI coding tool, you can connect Golpo directly. Instead of opening the Golpo website, you ask your AI assistant in plain English — *"make a 30-second video about why the sky is blue"* — and a finished MP4 lands on your computer.
 
-This guide walks you through the setup. It takes about **2 minutes**.
+This guide walks you through the setup. It usually takes **2–5 minutes** once you have a Golpo API key.
 
 ---
 
 ## How it works (in plain English)
 
-Modern AI tools support something called **MCP**. Don't worry about the acronym — all it means is that your AI assistant can plug into outside services. We've built a small Golpo plug-in for it. Once installed, your AI tool can:
+Modern AI tools support something called **MCP**. Don't worry about the acronym — all it means is that your AI assistant can plug into outside services. We've published a small Golpo plug-in for it. Once installed, your AI tool can:
 
 - generate Golpo videos from prompts, scripts, audio, or documents,
 - save the MP4 to your computer automatically,
 - show you a shareable link,
 - list and re-download your past videos.
 
-> **You will never type "MCP" or "Golpo" as a terminal command.** MCP isn't a command — it's the wiring between your AI tool and Golpo. After the one-time setup below, you just chat with your AI like normal.
+> You won't run a separate program named `mcp` or `golpo`. Some tools use "MCP" in setup menus or CLI subcommands, but after setup you just chat normally — no terminal commands needed for everyday use.
+
+---
+
+## 🔒 Keep your API key safe (please read)
+
+Treat your Golpo API key like a password.
+
+- Never paste it into a public chat, screenshot, support ticket, or shared document.
+- Never commit it to a public repo. If you accidentally do, **rotate it immediately** at [video.golpoai.com](https://video.golpoai.com).
+- Only install the Golpo MCP server from [the official GitHub repo](https://github.com/Golpo-AI/golpo-mcp) or PyPI — `pypi.org/project/golpo-mcp`.
+- When an AI tool asks to run a Golpo tool (especially `generate_video`), glance at the parameters before approving. Most AI tools show you a confirmation dialog the first time.
+
+The MCP server only sends your key to the official Golpo API (`api.golpoai.com`). It never phones home, logs your key, or shares it with third parties — but security is layered, and you owning the key is the first layer.
 
 ---
 
@@ -33,7 +46,7 @@ Modern AI tools support something called **MCP**. Don't worry about the acronym 
 
 ## Step 1 — Install `uv` (one-time, all tools)
 
-`uv` is a tiny tool that downloads and runs the Golpo plug-in for you. You only install it once, and you never have to think about it again.
+`uv` is a tiny tool that downloads and runs the Golpo plug-in for you. You only install it once.
 
 ### On Mac or Linux
 
@@ -64,7 +77,8 @@ Click the tool you use:
 - [**Cursor**](#cursor) — easiest, one click
 - [**Claude Code**](#claude-code) — one command
 - [**VS Code** (with GitHub Copilot)](#vs-code-with-github-copilot) — one command or GUI
-- [**Claude Desktop**](#claude-desktop) — paste a small file
+- [**Claude Desktop (Mac)**](#claude-desktop-mac) — paste a small command
+- [**Claude Desktop (Windows)**](#claude-desktop-windows) — paste a small command
 - [**Visual Studio** (Windows)](#visual-studio-windows) — paste a small file
 
 After your tool is set up, jump to [**How to use it**](#how-to-use-it).
@@ -79,7 +93,7 @@ The easiest of all. One click installs everything.
 
 1. **Click this link:**
 
-   👉 [**Add Golpo to Cursor**](cursor://anysphere.cursor-deeplink/mcp/install?name=golpo&config=eyJjb21tYW5kIjogInV2eCIsICJhcmdzIjogWyItLWZyb20iLCAiZ2l0K2h0dHBzOi8vZ2l0aHViLmNvbS9Hb2xwby1BSS9nb2xwby1tY3AiLCAiZ29scG8tbWNwIl0sICJlbnYiOiB7IkdPTFBPX0FQSV9LRVkiOiAiWU9VUl9LRVlfSEVSRSJ9fQ==)
+   👉 [**Add Golpo to Cursor**](cursor://anysphere.cursor-deeplink/mcp/install?name=golpo&config=eyJjb21tYW5kIjogInV2eCIsICJhcmdzIjogWyJnb2xwby1tY3AiXSwgImVudiI6IHsiR09MUE9fQVBJX0tFWSI6ICJZT1VSX0tFWV9IRVJFIn19)
 
 2. Your browser will ask "Open in Cursor?" — say **Yes**.
 3. Cursor opens with a confirmation dialog. **Replace `YOUR_KEY_HERE` with your Golpo API key**, then click **Install**.
@@ -96,7 +110,7 @@ If clicking the link doesn't open Cursor, do this instead:
    ```json
    {
      "command": "uvx",
-     "args": ["--from", "git+https://github.com/Golpo-AI/golpo-mcp", "golpo-mcp"],
+     "args": ["golpo-mcp"],
      "env": { "GOLPO_API_KEY": "your-key-here" }
    }
    ```
@@ -120,9 +134,9 @@ Claude Code has a single command that does everything.
 2. Paste this, **replacing `your-key-here` with your real Golpo API key**:
 
    ```bash
-   claude mcp add -s user golpo \
-     -e GOLPO_API_KEY=your-key-here \
-     -- uvx --from git+https://github.com/Golpo-AI/golpo-mcp golpo-mcp
+   claude mcp add --transport stdio --scope user \
+     --env GOLPO_API_KEY=your-key-here \
+     golpo -- uvx golpo-mcp
    ```
 
 3. Press Enter. You'll see "Added stdio MCP server golpo."
@@ -139,7 +153,7 @@ You should see `golpo` with **✓ Connected**.
 ### To remove later
 
 ```bash
-claude mcp remove -s user golpo
+claude mcp remove --scope user golpo
 ```
 
 ---
@@ -154,7 +168,7 @@ claude mcp remove -s user golpo
 2. Paste this, replacing the key:
 
    ```bash
-   code --add-mcp '{"name":"golpo","command":"uvx","args":["--from","git+https://github.com/Golpo-AI/golpo-mcp","golpo-mcp"],"env":{"GOLPO_API_KEY":"your-key-here"}}'
+   code --add-mcp '{"name":"golpo","command":"uvx","args":["golpo-mcp"],"env":{"GOLPO_API_KEY":"your-key-here"}}'
    ```
 
 3. VS Code opens and asks you to confirm. Click **Install**.
@@ -171,11 +185,13 @@ If you'd rather click than type:
 3. Choose **"Command (stdio)"**.
 4. Paste this command:
    ```
-   uvx --from git+https://github.com/Golpo-AI/golpo-mcp golpo-mcp
+   uvx golpo-mcp
    ```
 5. Name it `golpo`.
 6. When asked for environment variables, paste `GOLPO_API_KEY=your-key-here`.
 7. Pick **"User"** scope when prompted.
+
+> Tip: VS Code supports `input variables` in MCP config for sensitive values, so you can prompt-at-startup rather than store the key in plaintext. See VS Code's MCP docs if you're setting up a shared workspace.
 
 ### Verify it worked
 
@@ -185,13 +201,13 @@ If you'd rather click than type:
 
 ---
 
-## Claude Desktop
+## Claude Desktop (Mac)
 
-Claude Desktop doesn't have a one-line command. You paste a small file.
+Claude Desktop on Mac doesn't have a one-line CLI. You paste a short command that writes the config file.
 
 ### Steps
 
-1. Open Terminal.
+1. Open Terminal (Cmd+Space → "Terminal" → Enter).
 2. Paste this — **all of it at once** — replacing the key:
 
    ```bash
@@ -202,7 +218,7 @@ Claude Desktop doesn't have a one-line command. You paste a small file.
    cfg = json.loads(p.read_text()) if p.exists() and p.stat().st_size else {}
    cfg.setdefault("mcpServers", {})["golpo"] = {
        "command": "uvx",
-       "args": ["--from", "git+https://github.com/Golpo-AI/golpo-mcp", "golpo-mcp"],
+       "args": ["golpo-mcp"],
        "env": {"GOLPO_API_KEY": os.environ["GOLPO_API_KEY"]},
    }
    p.write_text(json.dumps(cfg, indent=2) + "\n")
@@ -221,9 +237,51 @@ Claude Desktop doesn't have a one-line command. You paste a small file.
 
 ---
 
+## Claude Desktop (Windows)
+
+### Steps
+
+1. Open **PowerShell** (Start menu → type "PowerShell" → Enter).
+2. Paste this — **all of it** — replacing the key:
+
+   ```powershell
+   $env:GOLPO_API_KEY = "your-key-here"
+   python - @"
+   import json, os, pathlib
+   p = pathlib.Path(os.environ['APPDATA']) / 'Claude' / 'claude_desktop_config.json'
+   p.parent.mkdir(parents=True, exist_ok=True)
+   cfg = json.loads(p.read_text()) if p.exists() and p.stat().st_size else {}
+   cfg.setdefault('mcpServers', {})['golpo'] = {
+       'command': 'uvx',
+       'args': ['golpo-mcp'],
+       'env': {'GOLPO_API_KEY': os.environ['GOLPO_API_KEY']},
+   }
+   p.write_text(json.dumps(cfg, indent=2) + '\n')
+   print(f'OK -> {p}')
+   "@
+   ```
+
+3. **Quit Claude Desktop completely** (Alt+F4 or right-click tray icon → Quit) and reopen.
+4. Done. Skip to [How to use it](#how-to-use-it).
+
+> No Python on Windows? Open `%APPDATA%\Claude\claude_desktop_config.json` in Notepad and paste:
+> ```json
+> {
+>   "mcpServers": {
+>     "golpo": {
+>       "command": "uvx",
+>       "args": ["golpo-mcp"],
+>       "env": { "GOLPO_API_KEY": "your-key-here" }
+>     }
+>   }
+> }
+> ```
+
+---
+
 ## Visual Studio (Windows)
 
-For **Visual Studio 2022 17.13+** with the GitHub Copilot extension.
+For **Visual Studio 2022 17.14+** with the GitHub Copilot extension. MCP tools require **Agent mode** in Copilot Chat.
 
 ### Steps
 
@@ -236,11 +294,7 @@ For **Visual Studio 2022 17.13+** with the GitHub Copilot extension.
        "golpo": {
          "type": "stdio",
          "command": "uvx",
-         "args": [
-           "--from",
-           "git+https://github.com/Golpo-AI/golpo-mcp",
-           "golpo-mcp"
-         ],
+         "args": ["golpo-mcp"],
          "env": {
            "GOLPO_API_KEY": "your-key-here"
          }
@@ -365,7 +419,7 @@ Available: jazz, lofi, whimsical, dramatic, engaging, hyper, inspirational, docu
 | Error like `missing_credential` | API key wasn't passed through | Re-check the `GOLPO_API_KEY=...` part of your config |
 | Error `http_401` | API key is invalid or revoked | Get a fresh key from [video.golpoai.com](https://video.golpoai.com) |
 | Error `http_403` | Your plan doesn't include API access | Upgrade to Scale, Business + API add-on, or API-Only |
-| First request is slow | `uv` is downloading the Golpo plug-in (one-time, ~30 seconds) | Wait — subsequent requests are instant |
+| First request after install is slow | `uv` is downloading the Golpo plug-in (one-time, ~30 seconds). Subsequent server starts are faster — but **video generation itself still takes the normal generation time** (a 1-minute video still takes ~1 minute to render, regardless of cache). | Wait for the first install; future starts are cached. |
 | `cannot find executable 'uvx'` | `uv` was installed but the AI tool can't see it | Close the AI tool, restart your computer, reopen the AI tool |
 
 ---
@@ -380,6 +434,7 @@ The plug-in itself is **free and open-source** ([MIT licensed](https://github.co
 
 - 🐛 **Bugs or feature requests:** [github.com/Golpo-AI/golpo-mcp/issues](https://github.com/Golpo-AI/golpo-mcp/issues)
 - 📚 **Source code & docs:** [github.com/Golpo-AI/golpo-mcp](https://github.com/Golpo-AI/golpo-mcp)
+- 📦 **PyPI:** [pypi.org/project/golpo-mcp](https://pypi.org/project/golpo-mcp/)
 - 💬 **Support:** founders@golpoai.com
 - 📖 **Golpo API docs:** [video.golpoai.com/api-docs](https://video.golpoai.com/api-docs)
 
@@ -393,11 +448,11 @@ Pick your tool and follow the one line:
 
 | Tool | One-line install (replace `YOUR_KEY`) |
 |---|---|
-| **Cursor** | Click [**Add Golpo to Cursor**](cursor://anysphere.cursor-deeplink/mcp/install?name=golpo&config=eyJjb21tYW5kIjogInV2eCIsICJhcmdzIjogWyItLWZyb20iLCAiZ2l0K2h0dHBzOi8vZ2l0aHViLmNvbS9Hb2xwby1BSS9nb2xwby1tY3AiLCAiZ29scG8tbWNwIl0sICJlbnYiOiB7IkdPTFBPX0FQSV9LRVkiOiAiWU9VUl9LRVlfSEVSRSJ9fQ==), paste key, click Install |
-| **Claude Code** | `claude mcp add -s user golpo -e GOLPO_API_KEY=YOUR_KEY -- uvx --from git+https://github.com/Golpo-AI/golpo-mcp golpo-mcp` |
-| **VS Code** | `code --add-mcp '{"name":"golpo","command":"uvx","args":["--from","git+https://github.com/Golpo-AI/golpo-mcp","golpo-mcp"],"env":{"GOLPO_API_KEY":"YOUR_KEY"}}'` |
-| **Claude Desktop** | Run the Python one-liner from the [Claude Desktop section](#claude-desktop) |
-| **Visual Studio** | Save the JSON from the [Visual Studio section](#visual-studio-windows) to `%USERPROFILE%\.mcp.json` |
+| **Cursor** | Click [**Add Golpo to Cursor**](cursor://anysphere.cursor-deeplink/mcp/install?name=golpo&config=eyJjb21tYW5kIjogInV2eCIsICJhcmdzIjogWyJnb2xwby1tY3AiXSwgImVudiI6IHsiR09MUE9fQVBJX0tFWSI6ICJZT1VSX0tFWV9IRVJFIn19), paste key, click Install |
+| **Claude Code** | `claude mcp add --transport stdio --scope user --env GOLPO_API_KEY=YOUR_KEY golpo -- uvx golpo-mcp` |
+| **VS Code** | `code --add-mcp '{"name":"golpo","command":"uvx","args":["golpo-mcp"],"env":{"GOLPO_API_KEY":"YOUR_KEY"}}'` |
+| **Claude Desktop (Mac/Win)** | Run the platform-appropriate one-liner from the section above |
+| **Visual Studio** | Save the JSON to `%USERPROFILE%\.mcp.json` (see section above) |
 
 After install: **restart the app**, switch to **Agent mode** (if applicable), and start chatting.
 
