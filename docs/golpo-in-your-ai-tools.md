@@ -36,11 +36,47 @@ The MCP server only sends your key to the official Golpo API (`api.golpoai.com`)
 
 ## Step 0 — Get your Golpo API key (one-time, all tools)
 
-1. Go to **[video.golpoai.com](https://video.golpoai.com)** and sign in.
-2. Open your account dashboard and copy your **API key**. It's a long string of letters and numbers.
-3. Keep it in a notepad — you'll paste it in once, below.
+API access is gated behind specific Golpo plans. There are three ways to get a key — pick the one that fits how you'll use Golpo. Full details in the official guide: [How to Get Golpo AI API Access: Plans & Pricing](https://video.golpoai.com/guide/golpo-ai-how-to-get-api-access).
 
-> Don't have a Golpo account yet? Sign up at [video.golpoai.com](https://video.golpoai.com). The API works on the **Scale** plan, the **Business + API add-on** plan, or the **API-Only** plan.
+### 🎯 Building with MCP, Claude Code, or Cursor? Start with API-Only.
+
+Golpo's own guide specifically recommends the **API-Only plan** for "*using Claude Code Skill, Claude, or Cursor or any AI program assistant*" — which is exactly what this page is about. It's the cheapest entry, no monthly commitment beyond a $200 minimum, and you pay only for the videos you generate.
+
+### The three plans that include API access
+
+| Plan | Price | What you get | When to pick it |
+|---|---|---|---|
+| **Scale** | $999.99/mo (or $9,999.90/yr) | 800 video minutes/month, platform UI + API both included | Your team uses both the dashboard AND code at meaningful volume |
+| **Business + API add-on** | Business plan ($499.99/mo) + $200/mo add-on | Full Business features + API against your included minutes | You're already on Business and the API is secondary |
+| **API-Only** ⭐ | $200/mo minimum, then usage-based | API access only, no dashboard generation. **Recommended for MCP / Claude / Cursor users.** | All videos triggered by code; no humans in the dashboard |
+
+### API-Only tiered pricing (volume discount)
+
+Per-minute price drops as your monthly spend grows:
+
+| Monthly spend | Per minute |
+|---|---|
+| $0 – $1,000 | $2.00/min (~30 sec of video per $1) |
+| $1,001 – $5,000 | $1.50/min (~40 sec of video per $1) |
+| $5,001+ | $1.20/min (~50 sec of video per $1) |
+
+API-Only also has **automatic top-up** — when your balance drops below $25, Golpo auto-refills so generation never halts mid-pipeline. You can pause auto top-up any time from the API dashboard.
+
+### How to actually get the key
+
+1. **Sign in or sign up** at [video.golpoai.com](https://video.golpoai.com).
+2. **Pick a plan** that includes API access (Scale, Business + API add-on, or API-Only).
+3. **Find the Create API Key button** — its location depends on your plan:
+   - **Scale** or **Business + API add-on:** green **Create API Key** button in the top-right of the **playground** header at [video.golpoai.com/playground](https://video.golpoai.com/playground), next to Voice Clone / Library / Upgrade.
+   - **API-Only:** blue **+ Create API Key** button under the *API Documentation* section of the dedicated [API dashboard at video.golpoai.com/api-dashboard](https://video.golpoai.com/api-dashboard).
+4. **Click it.** You'll get a key that looks like a long string. **Copy it now** — Golpo shows it once.
+5. **Save it somewhere safe** (a password manager is ideal). You'll paste it once during setup below.
+
+> If you don't see a Create API Key button anywhere, your current plan doesn't include API access yet. Upgrade or add the API add-on first.
+
+### How the API key is used
+
+You'll paste this key once into your AI tool's MCP config (we'll show you exactly where in your tool's section below). Behind the scenes, every Golpo API call sends it as the `x-api-key` header. You won't see this — your AI tool handles it.
 
 ---
 
@@ -426,7 +462,13 @@ Available: jazz, lofi, whimsical, dramatic, engaging, hyper, inspirational, docu
 
 # What does it cost?
 
-The plug-in itself is **free and open-source** ([MIT licensed](https://github.com/Golpo-AI/golpo-mcp/blob/main/LICENSE)). You only pay for the videos you generate, billed by Golpo's normal pricing — **2 credits per minute of generated video** (≈$0.50 for 15 seconds, $2 for a minute). Check your usage at [video.golpoai.com](https://video.golpoai.com).
+The plug-in itself is **free and open-source** ([MIT licensed](https://github.com/Golpo-AI/golpo-mcp/blob/main/LICENSE)). You only pay Golpo for the videos you actually generate. Pricing depends on which plan gives you your API key:
+
+- **Scale** — $999.99/mo flat, includes 800 video minutes
+- **Business + API add-on** — $499.99/mo Business + $200/mo add-on, uses your included minutes
+- **API-Only** — $200/mo minimum, then **$2.00/min** for the first $1,000, **$1.50/min** up to $5,000, **$1.20/min** above that (≈$0.50 for a 15-second video, $2 for a 1-minute video at the entry tier)
+
+Track your usage and billing at [video.golpoai.com](https://video.golpoai.com). Full plan + pricing detail: [How to Get Golpo AI API Access](https://video.golpoai.com/guide/golpo-ai-how-to-get-api-access).
 
 ---
 

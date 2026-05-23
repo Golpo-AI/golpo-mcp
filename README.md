@@ -129,7 +129,19 @@ Resolution order:
 The file location is shared with the Golpo Claude Code skill, so users who
 already have that skill authenticated don't need to re-enter the key.
 
-Get a key at [video.golpoai.com](https://video.golpoai.com).
+### How to get a key
+
+API access is gated behind specific Golpo plans. Three options:
+
+- **Scale** ($999.99/mo) — platform + API, 800 video minutes/month included
+- **Business + API add-on** ($499.99/mo Business + $200/mo add-on)
+- **API-Only** — usage-based with $200/mo minimum (**recommended for MCP/Claude/Cursor users** per [Golpo's own guide](https://video.golpoai.com/guide/golpo-ai-how-to-get-api-access))
+
+Find the **Create API Key** button:
+- Scale / Business+addon: green button in the playground header at [video.golpoai.com/playground](https://video.golpoai.com/playground)
+- API-Only: blue button under "API Documentation" at [video.golpoai.com/api-dashboard](https://video.golpoai.com/api-dashboard)
+
+Full plan + pricing detail: [How to Get Golpo AI API Access](https://video.golpoai.com/guide/golpo-ai-how-to-get-api-access).
 
 ## Tool catalog (v0.1.0)
 
