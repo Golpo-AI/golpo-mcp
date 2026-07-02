@@ -15,16 +15,35 @@ import requests
 
 from .auth import get_key
 
-API_BASE_DEFAULT = "https://api.golpoai.com/api/v1"
-TERMINAL_OK = {"completed", "ready", "done", "success", "finished"}
+API_HOST_DEFAULT = "https://api.golpoai.com"
+DEFAULT_API_VERSION = "v2"
+SUPPORTED_API_VERSIONS = ("v1", "v2")
+# "script_ready" is terminal for just_return_script / enable_script_only_mode
+# jobs: the backend reports it (with script_text, no video_url) once the script
+# exists. Video/podcast jobs never emit it, so this can't end them early.
+TERMINAL_OK = {"completed", "ready", "done", "success", "finished", "script_ready"}
 TERMINAL_FAIL = {"failed", "error", "errored", "cancelled", "canceled"}
 
 # Fields that the Golpo API requires as strings even though they look numeric/bool.
 STRING_COERCE_FIELDS = {"timing", "use_lineart_2_style"}
 
 
+def api_version() -> str:
+    """Which Golpo API version to target. Defaults to v2.
+
+    Set GOLPO_API_VERSION=v1 to stay on the older v1 engine. Unknown values
+    fall back to the default rather than erroring.
+    """
+    v = os.environ.get("GOLPO_API_VERSION", DEFAULT_API_VERSION).strip().lower()
+    return v if v in SUPPORTED_API_VERSIONS else DEFAULT_API_VERSION
+
+
 def api_base() -> str:
-    return os.environ.get("GOLPO_API_BASE", API_BASE_DEFAULT)
+    # An explicit GOLPO_API_BASE always wins (back-compat / self-hosting).
+    explicit = os.environ.get("GOLPO_API_BASE")
+    if explicit:
+        return explicit
+    return f"{API_HOST_DEFAULT}/api/{api_version()}"
 
 
 class GolpoAPIError(RuntimeError):
@@ -150,10 +169,28 @@ def upload(path: str) -> dict:
 
 
 def generate(payload: dict) -> dict:
-    """Submit a generate job. Returns the API response (job_id, video_id, status)."""
+    """Submit a v1-shaped generate job. Returns the API response (job_id, status).
+
+    Used by the v1 pipeline (generate_v1.py). The v1 API requires certain
+    fields as strings, so we coerce them here.
+    """
     if "prompt" not in payload and "audio_clip" not in payload:
         raise ValueError("at least one of `prompt` or `audio_clip` is required")
     _coerce_string_fields(payload)
+    return request("POST", "/videos/generate", json_body=payload)
+
+
+def submit_generate_v2(payload: dict) -> dict:
+    """Submit a v2-shaped generate job. Returns the API response (job_id, status).
+
+    Used by the v2 pipeline (generate_v2.py). The payload is already in native
+    v2 vocabulary — no translation happens here; we only ensure `timing` is a
+    string (the one stringly-typed v2 field) and POST it as-is.
+    """
+    if "prompt" not in payload and "own_narration_source" not in payload:
+        raise ValueError("at least one of `prompt` or `own_narration_source` is required")
+    if payload.get("timing") is not None and not isinstance(payload["timing"], str):
+        payload["timing"] = str(payload["timing"])
     return request("POST", "/videos/generate", json_body=payload)
 
 
@@ -183,7 +220,13 @@ def poll_until_terminal(
             except Exception:
                 pass
         status = (st.get("status") or "").strip().lower()
-        if status in TERMINAL_OK or st.get("video_url"):
+        # Terminal when: a terminal status, a rendered video_url, OR a script
+        # payload is present. Script-only jobs (just_return_script /
+        # enable_script_only_mode) return script_text and never a video_url;
+        # video/podcast jobs never return script_text — so keying on its
+        # presence is a safe, version-agnostic "script is ready" signal even if
+        # the backend reports a non-terminal status string.
+        if status in TERMINAL_OK or st.get("video_url") or st.get("script_text"):
             return st
         if status in TERMINAL_FAIL:
             raise GolpoAPIError(0, st, f"job failed: {st.get('status')}")
