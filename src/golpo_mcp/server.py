@@ -168,5 +168,11 @@ def status() -> dict:
     out = key_status()
     out["server_version"] = __version__
     out["api_version"] = client.api_version()
-    out["api_base"] = client.api_base()
+    # api_base() validates GOLPO_API_BASE and can raise on a bad value; report
+    # the problem instead of letting the diagnostic tool itself crash.
+    try:
+        out["api_base"] = client.api_base()
+    except ValueError as e:
+        out["api_base"] = None
+        out["api_base_error"] = str(e)
     return out

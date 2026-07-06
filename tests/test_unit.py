@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from golpo_mcp import auth, client, downloads
+from golpo_mcp import auth, client, downloads, results, safety
 
 
 # ---------- slugify ----------
@@ -62,12 +62,47 @@ def test_get_key_missing_raises(monkeypatch, tmp_path):
 
 
 def test_save_then_get_key(monkeypatch, tmp_path):
+    import sys
     monkeypatch.delenv("GOLPO_API_KEY", raising=False)
     monkeypatch.setattr(auth, "KEY_PATH", tmp_path / "api_key")
     path = auth.save_key("saved-key-123")
     assert path.exists()
-    assert oct(path.stat().st_mode)[-3:] == "600"
+    if sys.platform != "win32":
+        # POSIX: owner-only 0600. (On Windows chmod can't express this; the ACL
+        # is locked down via icacls instead, which st_mode doesn't reflect.)
+        assert oct(path.stat().st_mode)[-3:] == "600"
     assert auth.get_key() == "saved-key-123"
+
+
+def test_get_key_blank_env_raises(monkeypatch, tmp_path):
+    """A whitespace-only env var must NOT count as a key."""
+    monkeypatch.setenv("GOLPO_API_KEY", "   ")
+    monkeypatch.setattr(auth, "KEY_PATH", tmp_path / "nope")
+    with pytest.raises(auth.MissingCredentialError):
+        auth.get_key()
+
+
+def test_get_key_empty_file_raises(monkeypatch, tmp_path):
+    """An empty/whitespace key file must NOT count as a key."""
+    monkeypatch.delenv("GOLPO_API_KEY", raising=False)
+    kf = tmp_path / "api_key"
+    kf.write_text("\n  \n")
+    monkeypatch.setattr(auth, "KEY_PATH", kf)
+    with pytest.raises(auth.MissingCredentialError):
+        auth.get_key()
+
+
+def test_request_never_calls_without_key(monkeypatch, tmp_path):
+    """No key -> get_key raises before any HTTP call is attempted."""
+    monkeypatch.delenv("GOLPO_API_KEY", raising=False)
+    monkeypatch.setattr(auth, "KEY_PATH", tmp_path / "absent")
+
+    def _boom(*a, **k):
+        raise AssertionError("HTTP call attempted without an API key!")
+
+    monkeypatch.setattr(client.requests, "request", _boom)
+    with pytest.raises(auth.MissingCredentialError):
+        client.request("GET", "/videos")
 
 
 def test_key_status_reports_correctly(monkeypatch, tmp_path):
@@ -181,3 +216,124 @@ def test_server_tools_registered():
     names = {t.name for t in listed}
     missing = expected_tools - names
     assert not missing, f"missing tools: {missing}"
+
+
+# ---------- security: upload path guard ----------
+
+def test_upload_refuses_api_key_file(monkeypatch, tmp_path):
+    key_file = tmp_path / "api_key"
+    key_file.write_text("super-secret-key\n")
+    monkeypatch.setattr(auth, "KEY_PATH", key_file)
+    monkeypatch.setattr(safety, "KEY_PATH", key_file)
+    with pytest.raises(PermissionError):
+        safety.check_upload_path(key_file)
+
+
+@pytest.mark.parametrize("name", [
+    "id_rsa", ".env", ".env.production", "credentials", ".netrc",
+    "server.pem", "private.key", "cert.pfx", ".pypirc",
+])
+def test_upload_refuses_secret_names(tmp_path, name):
+    f = tmp_path / name
+    f.write_text("x")
+    with pytest.raises(PermissionError):
+        safety.check_upload_path(f)
+
+
+@pytest.mark.parametrize("rel", [".ssh/known_file", ".aws/config", ".gnupg/data"])
+def test_upload_refuses_credential_dirs(tmp_path, rel):
+    f = tmp_path / rel
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text("x")
+    with pytest.raises(PermissionError):
+        safety.check_upload_path(f)
+
+
+def test_upload_allows_ordinary_media(tmp_path):
+    f = tmp_path / "report.pdf"
+    f.write_text("x")
+    safety.check_upload_path(f)  # must not raise
+    (tmp_path / "clip.mp3").write_text("x")
+    safety.check_upload_path(tmp_path / "clip.mp3")
+
+
+def test_upload_refuses_symlink_to_secret(tmp_path, monkeypatch):
+    secret = tmp_path / "id_rsa"
+    secret.write_text("KEY")
+    link = tmp_path / "innocent.pdf"
+    try:
+        link.symlink_to(secret)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks not supported on this platform/user")
+    with pytest.raises(PermissionError):
+        safety.check_upload_path(link)
+
+
+# ---------- security: API base must not leak the key over cleartext ----------
+
+def test_api_base_rejects_http_remote(monkeypatch):
+    monkeypatch.setenv("GOLPO_API_BASE", "http://evil.example.com/api/v2")
+    with pytest.raises(ValueError):
+        client.api_base()
+
+
+def test_api_base_allows_https(monkeypatch):
+    monkeypatch.setenv("GOLPO_API_BASE", "https://api.golpoai.com/api/v2")
+    assert client.api_base() == "https://api.golpoai.com/api/v2"
+
+
+def test_api_base_allows_http_localhost(monkeypatch):
+    monkeypatch.setenv("GOLPO_API_BASE", "http://localhost:8080/api/v2")
+    assert client.api_base() == "http://localhost:8080/api/v2"
+
+
+def test_api_base_default_is_https(monkeypatch):
+    monkeypatch.delenv("GOLPO_API_BASE", raising=False)
+    assert client.api_base().startswith("https://")
+
+
+# ---------- security: downloads stay safe ----------
+
+def test_download_rejects_nonmedia_extension(monkeypatch, tmp_path):
+    """A URL ending in .exe must be written as .mp4, never executable."""
+
+    class _FakeResp:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def raise_for_status(self): pass
+        def iter_content(self, chunk_size): return [b"data"]
+
+    def _fake_get(url, **kw):
+        return _FakeResp()
+
+    monkeypatch.setattr(downloads.requests, "get", _fake_get)
+    out = downloads.download_video(
+        "https://evil.example/x.exe?sig=1", tmp_path, title="t", video_id="abc",
+    )
+    assert out is not None
+    assert out.suffix == ".mp4"
+
+
+# ---------- security: error results never echo the key ----------
+
+def test_error_result_redacts_key(monkeypatch):
+    monkeypatch.setenv("GOLPO_API_KEY", "sk-live-do-not-leak")
+    exc = client.GolpoAPIError(401, {"detail": "bad key sk-live-do-not-leak"})
+    out = results.error_result(exc)
+    assert "sk-live-do-not-leak" not in repr(out)
+    assert "REDACTED" in out["body"]["detail"]
+
+
+def test_redact_handles_nested_and_none():
+    assert safety.redact({"a": ["x", "SECRET"]}, "SECRET") == {"a": ["x", "***REDACTED***"]}
+    assert safety.redact("SECRET", None) == "SECRET"  # no key -> unchanged
+
+
+def test_status_tool_survives_bad_api_base(monkeypatch):
+    """The diagnostic must not crash when GOLPO_API_BASE is misconfigured."""
+    from golpo_mcp import server as srv
+    monkeypatch.setenv("GOLPO_API_BASE", "http://evil.example.com/api/v2")
+    monkeypatch.setenv("GOLPO_API_KEY", "k")
+    out = srv.status.fn() if hasattr(srv.status, "fn") else srv.status()
+    assert out["api_base"] is None
+    assert "api_base_error" in out

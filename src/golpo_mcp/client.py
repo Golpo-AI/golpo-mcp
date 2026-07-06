@@ -14,6 +14,7 @@ from typing import Any
 import requests
 
 from .auth import get_key
+from .safety import check_upload_path
 
 API_HOST_DEFAULT = "https://api.golpoai.com"
 DEFAULT_API_VERSION = "v2"
@@ -38,11 +39,37 @@ def api_version() -> str:
     return v if v in SUPPORTED_API_VERSIONS else DEFAULT_API_VERSION
 
 
+def _validate_base(base: str) -> str:
+    """Reject an API base that would send the key insecurely.
+
+    The API key travels in the `x-api-key` header on every call, so the base
+    MUST be HTTPS — otherwise the key crosses the wire in cleartext. Plain
+    `http://` is allowed only for loopback hosts (local dev / self-hosting).
+    """
+    from urllib.parse import urlparse
+
+    parsed = urlparse(base)
+    scheme = parsed.scheme.lower()
+    host = (parsed.hostname or "").lower()
+    loopback = host in ("localhost", "127.0.0.1", "::1", "0.0.0.0") or host.endswith(".localhost")
+    if scheme == "https":
+        return base
+    if scheme == "http" and loopback:
+        return base
+    if scheme in ("http", ""):
+        raise ValueError(
+            f"refusing to use GOLPO_API_BASE={base!r}: the API key is sent in a "
+            "header and would be exposed over cleartext. Use an https:// URL "
+            "(http:// is only allowed for localhost)."
+        )
+    raise ValueError(f"unsupported GOLPO_API_BASE scheme {scheme!r}: {base!r}")
+
+
 def api_base() -> str:
     # An explicit GOLPO_API_BASE always wins (back-compat / self-hosting).
     explicit = os.environ.get("GOLPO_API_BASE")
     if explicit:
-        return explicit
+        return _validate_base(explicit.strip())
     return f"{API_HOST_DEFAULT}/api/{api_version()}"
 
 
@@ -127,6 +154,8 @@ def upload(path: str) -> dict:
     p = pathlib.Path(path).expanduser()
     if not p.is_file():
         raise FileNotFoundError(f"upload source not found: {p}")
+    # Block exfiltration of credentials/secrets via a prompt-injected upload.
+    check_upload_path(p)
     size_mb = p.stat().st_size / (1024 * 1024)
     if size_mb > 15:
         raise ValueError(f"file is {size_mb:.1f} MB; Golpo upload limit is 15 MB")
