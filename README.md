@@ -129,6 +129,31 @@ Resolution order:
 The file location is shared with the Golpo Claude Code skill, so users who
 already have that skill authenticated don't need to re-enter the key.
 
+## API version
+
+The server talks to the Golpo `/api/v2` endpoints by default. To stay on the
+older `/api/v1` engine, set `GOLPO_API_VERSION=v1` in the server's `env`:
+
+```jsonc
+"golpo": {
+  "command": "uvx",
+  "args": ["golpo-mcp"],
+  "env": {
+    "GOLPO_API_KEY": "your-key",
+    "GOLPO_API_VERSION": "v1"
+  }
+}
+```
+
+Each version runs its own separate pipeline with native parameters:
+`generate_video` exposes v2's parameter names (`narration_voice`,
+`golpo_video_engine`, `canvas_style_variant`, `enable_podcast_engine`, …) in v2
+mode and v1's names (`style`, `use_2_0_style`, `audio_only`, …) in v1 mode. The
+other tools (`upload_file`, `list_videos`, `get_video`, `check_status`) are
+identical across versions. Leaving the variable unset uses v2. (`GOLPO_API_BASE`,
+if set, still overrides the host and version entirely.) Run the `status` tool to
+see which version is active.
+
 ### How to get a key
 
 API access is gated behind specific Golpo plans. Three options:
