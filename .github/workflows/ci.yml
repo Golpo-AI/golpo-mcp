@@ -50,3 +50,12 @@ jobs:
 
       - name: List built artifacts
         run: ls -la dist/
+
+      # The README's install line, run on the wheel just built: uvx resolves the
+      # newest dependencies allowed, as it does for users, then the test does the
+      # MCP handshake (initialize + tools/list) over stdio.
+      - name: Smoke-test the README install line (uvx golpo-mcp)
+        run: |
+          pip install --quiet uv
+          GOLPO_MCP_SMOKE_CMD="uvx --no-cache --from $(ls dist/*.whl) golpo-mcp" \
+            pytest -v tests/test_install.py -k stdio

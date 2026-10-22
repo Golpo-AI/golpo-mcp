@@ -26,5 +26,12 @@ jobs:
           python -m pip install --upgrade pip build
           python -m build
 
+      # A release that cannot start never reaches PyPI.
+      - name: Smoke-test the README install line (uvx golpo-mcp)
+        run: |
+          python -m pip install --quiet uv pytest
+          GOLPO_MCP_SMOKE_CMD="uvx --no-cache --from $(ls dist/*.whl) golpo-mcp" \
+            python -m pytest -v tests/test_install.py -k stdio
+
       - name: Publish to PyPI (OIDC)
         uses: pypa/gh-action-pypi-publish@release/v1
